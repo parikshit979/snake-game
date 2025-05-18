@@ -16,8 +16,6 @@ type Snake struct {
 	Length int
 	// The body of the snake, represented as a slice of Points.
 	Body []*Point
-	// The speed of the snake.
-	Speed int
 	// The color of the snake.
 	Color colorUtil.Color
 	// The score of the snake.
@@ -30,12 +28,11 @@ type Snake struct {
 
 // NewSnake creates a new snake with the given head position, direction, length,
 // speed, color, score, and maximum score.
-func NewSnake(head Point, direction Direction, speed int,
+func NewSnake(head Point, direction Direction,
 	color colorUtil.Color, score int, maxScore int) *Snake {
 	snake := &Snake{
 		Head:      &head,
 		Direction: direction,
-		Speed:     speed,
 		Color:     color,
 		Score:     score,
 		MaxScore:  maxScore,
@@ -85,9 +82,7 @@ func (s *Snake) CheckCollision(screenWidth, screenHeight int, direction Directio
 	return false
 }
 
-// CheckWin checks if the snake has won the game.
-// It returns true if the snake has won, false otherwise.
-func (s *Snake) CheckWin() bool {
+func (s *Snake) CheckWinner() bool {
 	// Check if the snake has reached the maximum score
 	if s.Score >= s.MaxScore {
 		s.GameOver = true
@@ -100,9 +95,6 @@ func (s *Snake) CheckWin() bool {
 // It updates the score of the snake based on the food eaten.
 func (s *Snake) IncreaseScore(score int) {
 	s.Score += score
-	if s.Score > s.MaxScore {
-		s.MaxScore = s.Score
-	}
 }
 
 // GetBody returns the body of the snake.
@@ -164,7 +156,7 @@ func (s *Snake) Restart() {
 	s.Length = 1
 	s.Body = []*Point{s.Head}
 	s.Score = 0
-	s.MaxScore = 20
+	s.MaxScore = GameWinningScore
 	s.GameOver = false
 }
 

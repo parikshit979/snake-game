@@ -119,7 +119,6 @@ func (g *Game) CaptureScreenshot(screen *ebiten.Image) {
 
 // Update is called every frame. It should return the next game state.
 func (g *Game) Update() error {
-
 	// Check for the Enter key to start the game.
 	if ebiten.IsKeyPressed(ebiten.KeyEnter) && !g.IsGameStarted() {
 		// Start the game if the Enter key is pressed.
@@ -143,6 +142,8 @@ func (g *Game) Update() error {
 		// If the snake is moving in the opposite direction, do not change the direction.
 		return nil
 	}
+
+	// Check if the snake collides with the screen boundaries.
 	if g.GetSnake().CheckCollision(ScreenWidth, ScreenHeight, direction) {
 		return nil
 	}
@@ -154,6 +155,8 @@ func (g *Game) Update() error {
 	}
 	g.lastUpdate = time.Now()
 
+	// Move the snake and spawn food if it is eaten.
+	// Check if the game is over or the snake is a winner.
 	if !g.GetSnake().IsGameOver() {
 		// Move the snake in the current direction.
 		g.GetSnake().Move()
@@ -164,6 +167,10 @@ func (g *Game) Update() error {
 			point := g.GetFood().GetPosition()
 			g.GetSnake().IncreaseLength(point)
 			g.GetSnake().IncreaseScore(g.GetFood().GetScore())
+
+			if g.GetSnake().CheckWinner() {
+				return nil
+			}
 
 			// Spawn new food at a random position.
 			g.GetFood().SpawnFood()
@@ -189,7 +196,7 @@ func (g *Game) AddScreenMessage(screen *ebiten.Image, message string) {
 	// Draw the game over message if the game is over.
 	if g.GetSnake().IsGameOver() {
 		ebitenutil.DebugPrintAt(screen, "Press R to restart",
-			int(screenWidth)+80, int(screenHeight)+80)
+			int(screenWidth+w/4), int(screenHeight+h))
 	}
 }
 
@@ -213,8 +220,13 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Draw the game over message if the game is over.
 	if g.GetSnake().IsGameOver() {
-		// Draw the game over message.
-		g.AddScreenMessage(screen, g.gameOverMessage)
+		if g.GetSnake().CheckWinner() {
+			// Draw the win message.
+			g.AddScreenMessage(screen, "You Win!")
+		} else {
+			// Draw the game over message.
+			g.AddScreenMessage(screen, g.gameOverMessage)
+		}
 	}
 
 	// Capture the screenshot if the flag is set.

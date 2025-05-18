@@ -21,7 +21,7 @@ func main() {
 	// Create a new snake instance. The snake starts at the center of the screen,
 	// facing right, with a length of 1, speed of 10, and color white.
 	snake := game.NewSnake(game.NewPoint(snakeStartX, snakeStartY),
-		game.NewDirection(1, 0), 10, colorUtil.White, 0, 20)
+		game.NewDirection(1, 0), colorUtil.White, 0, game.GameWinningScore)
 
 	// Create a new food instance. The food is spawned at a random position.
 	food := game.NewFood()

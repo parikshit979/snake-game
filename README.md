@@ -20,7 +20,7 @@ Here are some screenshots of the game in action:
 
 ### Game Over
 ![Game Over Self Screenshot](./images/gameoverself.png)
-![Game Over Self Screenshot](./images/gameoveredge.png)
+![Game Over Edge Screenshot](./images/gameoveredge.png)
 
 ## Project Structure
 

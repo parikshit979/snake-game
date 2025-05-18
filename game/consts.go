@@ -9,4 +9,6 @@ const (
 	GridSize = 20
 	// GameSpeed is the speed of the game in frames per second.
 	GameSpeed = 5
+	// GameWinningScore is the score required to win the game.
+	GameWinningScore = 20
 )
