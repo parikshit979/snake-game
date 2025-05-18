@@ -1,7 +1,10 @@
 package game
 
 import (
+	"image"
 	colorUtil "image/color"
+	"image/png"
+	"os"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -20,7 +23,7 @@ type Game struct {
 	// The game speed in ticks per second.
 	gameSpeed time.Duration
 	// The last update time.
-	lasUpdate time.Time
+	lastUpdate time.Time
 	// The game over message.
 	gameOverMessage string
 	// The game over color.
@@ -29,18 +32,24 @@ type Game struct {
 	gameOverFontSize int
 	// The game over font source.
 	mPlusFaceSource *text.GoTextFaceSource
+	// captureScreenshot flag to capture the screenshot.
+	captureScreenshot bool
+	// gameStarted flag to check if the game has started.
+	gameStarted bool
 }
 
 func NewGame(snake *Snake, food *Food, gameSpeed int,
 	mplusFaceSource *text.GoTextFaceSource) *Game {
 	return &Game{
-		snake:            snake,
-		food:             food,
-		gameSpeed:        time.Second / time.Duration(gameSpeed),
-		mPlusFaceSource:  mplusFaceSource,
-		gameOverMessage:  "Game Over!",
-		gameOverColor:    colorUtil.White,
-		gameOverFontSize: 50,
+		snake:             snake,
+		food:              food,
+		gameSpeed:         time.Second / time.Duration(gameSpeed),
+		mPlusFaceSource:   mplusFaceSource,
+		gameOverMessage:   "Game Over!",
+		gameOverColor:     colorUtil.White,
+		gameOverFontSize:  50,
+		captureScreenshot: false,
+		gameStarted:       false,
 	}
 }
 
@@ -75,8 +84,59 @@ func (g *Game) ReadKeyboard() Direction {
 	return direction
 }
 
+// CaptureScreenshot captures the current screen and saves it as a PNG file.
+func (g *Game) CaptureScreenshot(screen *ebiten.Image) {
+	// Create an empty image with the same dimensions as the screen.
+	img := image.NewRGBA(image.Rect(0, 0, ScreenWidth, ScreenHeight))
+
+	// Copy pixel data from the screen to the image.
+	for y := 0; y < ScreenHeight; y++ {
+		for x := 0; x < ScreenWidth; x++ {
+			img.Set(x, y, screen.At(x, y))
+		}
+	}
+
+	// Create a file to save the screenshot.
+	filename := "screenshot_" + time.Now().Format("20060102_150405") + ".png"
+	file, err := os.Create(filename)
+	if err != nil {
+		// Handle file creation error.
+		ebitenutil.DebugPrint(screen, "Failed to save screenshot!")
+		return
+	}
+	defer file.Close()
+
+	// Encode the image as PNG and save it to the file.
+	if err := png.Encode(file, img); err != nil {
+		// Handle encoding error.
+		ebitenutil.DebugPrint(screen, "Failed to encode screenshot!")
+		return
+	}
+
+	// Notify the user that the screenshot was saved.
+	ebitenutil.DebugPrint(screen, "Screenshot saved: "+filename)
+}
+
 // Update is called every frame. It should return the next game state.
 func (g *Game) Update() error {
+
+	// Check for the Enter key to start the game.
+	if ebiten.IsKeyPressed(ebiten.KeyEnter) && !g.IsGameStarted() {
+		// Start the game if the Enter key is pressed.
+		g.gameStarted = true
+	}
+
+	// Check if the game has started.
+	if !g.IsGameStarted() {
+		return nil
+	}
+
+	// Check for the P key to capture a screenshot.
+	if ebiten.IsKeyPressed(ebiten.KeyP) {
+		// Set a flag to capture the screenshot in the Draw method.
+		g.captureScreenshot = true
+	}
+
 	// Read keyboard input.
 	direction := g.ReadKeyboard()
 	if g.GetSnake().IsOppositeDirection(direction) {
@@ -89,10 +149,10 @@ func (g *Game) Update() error {
 	g.GetSnake().SetDirection(direction)
 
 	// Check game speed and update the game state.
-	if time.Since(g.lasUpdate) < g.gameSpeed {
+	if time.Since(g.lastUpdate) < g.gameSpeed {
 		return nil
 	}
-	g.lasUpdate = time.Now()
+	g.lastUpdate = time.Now()
 
 	if !g.GetSnake().IsGameOver() {
 		// Move the snake in the current direction.
@@ -112,8 +172,34 @@ func (g *Game) Update() error {
 	return nil
 }
 
+func (g *Game) AddScreenMessage(screen *ebiten.Image, message string) {
+	// Draw the start message if the game has not started.
+	face := &text.GoTextFace{
+		Source: g.mPlusFaceSource,
+		Size:   float64(g.gameOverFontSize),
+	}
+	w, h := text.Measure(message, face, face.Size)
+	drawOptions := &text.DrawOptions{}
+	screenWidth := (ScreenWidth - w) / 2
+	screenHeight := (ScreenHeight - h) / 2
+	drawOptions.GeoM.Translate(float64(screenWidth), float64(screenHeight))
+	drawOptions.ColorScale.ScaleWithColor(g.gameOverColor)
+	text.Draw(screen, message, face, drawOptions)
+
+	// Draw the game over message if the game is over.
+	if g.GetSnake().IsGameOver() {
+		ebitenutil.DebugPrintAt(screen, "Press R to restart",
+			int(screenWidth)+80, int(screenHeight)+80)
+	}
+}
+
 // Draw is called every frame. It should draw the game state to the screen.
 func (g *Game) Draw(screen *ebiten.Image) {
+	if !g.IsGameStarted() {
+		// Draw the start message if the game has not started.
+		g.AddScreenMessage(screen, "Press Enter to start")
+		return
+	}
 	// Draw the game state here
 	for _, point := range g.GetSnake().GetBody() {
 		vector.DrawFilledRect(screen, float32(point.X*GridSize),
@@ -127,21 +213,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Draw the game over message if the game is over.
 	if g.GetSnake().IsGameOver() {
-		face := &text.GoTextFace{
-			Source: g.mPlusFaceSource,
-			Size:   float64(g.gameOverFontSize),
-		}
+		// Draw the game over message.
+		g.AddScreenMessage(screen, g.gameOverMessage)
+	}
 
-		w, h := text.Measure(g.gameOverMessage, face, face.Size)
-		drawOptions := &text.DrawOptions{}
-		screenWidth := (ScreenWidth - w) / 2
-		screenHeight := (ScreenHeight - h) / 2
-		drawOptions.GeoM.Translate(float64(screenWidth), float64(screenHeight))
-		drawOptions.ColorScale.ScaleWithColor(g.gameOverColor)
-		text.Draw(screen, g.gameOverMessage, face, drawOptions)
-
-		ebitenutil.DebugPrintAt(screen, "Press R to restart",
-			int(screenWidth)+80, int(screenHeight)+80)
+	// Capture the screenshot if the flag is set.
+	if g.captureScreenshot {
+		g.CaptureScreenshot(screen)
+		g.captureScreenshot = false
 	}
 }
 
@@ -159,4 +238,9 @@ func (g *Game) GetSnake() *Snake {
 // GetFood returns the food instance.
 func (g *Game) GetFood() *Food {
 	return g.food
+}
+
+// IsGameStarted returns true if the game has started.
+func (g *Game) IsGameStarted() bool {
+	return g.gameStarted
 }
