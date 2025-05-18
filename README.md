@@ -18,9 +18,6 @@ Here are some screenshots of the game in action:
 ### Gamestart
 ![Gamestart Screenshot](./images/gamestart.png)
 
-### Gameplay
-![Gameplay Screenshot](./images/gameplay.png)
-
 ### Game Over
 ![Game Over Self Screenshot](./images/gameoverself.png)
 ![Game Over Self Screenshot](./images/gameoveredge.png)
